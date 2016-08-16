@@ -87,6 +87,7 @@ function Gpio() {
     var exportedOutputPins = {};
     var getPinForCurrentMode = getPinRpi;
     var pollers = {};
+    var waitTimeout = 1000;
 
     this.DIR_IN   = 'in';
     this.DIR_OUT  = 'out';
@@ -98,6 +99,28 @@ function Gpio() {
     this.EDGE_RISING  = 'rising';
     this.EDGE_FALLING = 'falling';
     this.EDGE_BOTH    = 'both';
+
+    function await(cb) {
+        return function () {
+            var args = arguments;
+
+            setTimeout(
+                function () {
+                    cb.apply(null, args);
+                },
+                waitTimeout
+            );
+        };
+    }
+
+    /**
+     * Set time to wait between exports
+     *
+     * @param wait
+     */
+    this.setWaitTimeout = function (wait) {
+        waitTimeout = wait;
+    };
 
     /**
      * Set pin reference mode. Defaults to 'mode_rpi'.
@@ -132,7 +155,7 @@ function Gpio() {
             edge = this.EDGE_NONE;
         }
 
-        channel = parseInt(channel)
+        channel = parseInt(channel);
         direction = direction || this.DIR_OUT;
         edge = edge || this.EDGE_NONE;
         onSetup = onSetup || function() {};
@@ -173,12 +196,12 @@ function Gpio() {
             },
             function(isExported, next) {
                 if (isExported) {
-                    return unexportPin(pinForSetup, next);
+                    return unexportPin(pinForSetup, await(next));
                 }
                 return next(null);
             },
             function(next) {
-                exportPin(pinForSetup, next);
+                exportPin(pinForSetup, await(next));
             },
             function(next) {
                 setEdge(pinForSetup, edge, next);
